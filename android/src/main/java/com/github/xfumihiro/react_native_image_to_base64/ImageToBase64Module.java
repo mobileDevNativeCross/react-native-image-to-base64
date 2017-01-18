@@ -7,48 +7,66 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Callback;
 
-import java.util.Map;
-import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.util.Base64;
-import android.provider.MediaStore;
 import android.net.Uri;
-import java.io.IOException;
-import java.io.FileNotFoundException;
 
 public class ImageToBase64Module extends ReactContextBaseJavaModule {
-  Context context;
+ Context context;
 
-  public ImageToBase64Module(ReactApplicationContext reactContext) {
-    super(reactContext);
-    this.context = (Context) reactContext;
-  }
+ public ImageToBase64Module(ReactApplicationContext reactContext) {
+   super(reactContext);
+   this.context = (Context) reactContext;
+ }
 
-  @Override
-  public String getName() {
-    return "RNImageToBase64";
-  }
+ @Override
+ public String getName() {
+   return "RNImageToBase64";
+ }
 
-  @ReactMethod
-  public void getBase64String(String uri, Callback callback) {
-    try {
-      Bitmap image = MediaStore.Images.Media.getBitmap(this.context.getContentResolver(), Uri.parse(uri));
-      if (image == null) {
-        callback.invoke("Failed to decode Bitmap, uri: " + uri);
-      } else {
-        callback.invoke(null, bitmapToBase64(image));
-      }
-    } catch (IOException e) {
-    }
-  }
+ @ReactMethod
+ public void getBase64String(String uri, Callback callback) {
+     callback.invoke(null, getFileSize(Uri.parse(uri)));
+ }
 
-  private String bitmapToBase64(Bitmap bitmap) {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
-    byte[] byteArray = byteArrayOutputStream.toByteArray();
-    return Base64.encodeToString(byteArray, Base64.DEFAULT);
-  }
+ private String getFileSize(Uri uri) {
+   try {
+     final File file = createFileFromURI(uri);
+     String realPath = file.getAbsolutePath();
+    //  Thread t = new Thread(){
+    //    public void run() {
+    //      file.delete();
+    //    }
+    //  };
+    //  t.start();
+     return Long.toString(file.length());
+   } catch (Exception e) {
+     e.printStackTrace();
+     return "error";
+   }
+ }
+
+ private File createFileFromURI(Uri uri) throws Exception {
+   File file = new File(this.context.getCacheDir(), "photo-" + uri.getLastPathSegment());
+   InputStream input = this.context.getContentResolver().openInputStream(uri);
+   OutputStream output = new FileOutputStream(file);
+
+   try {
+     byte[] buffer = new byte[4 * 1024];
+     int read;
+     while ((read = input.read(buffer)) != -1) {
+       output.write(buffer, 0, read);
+     }
+     output.flush();
+   } finally {
+     output.close();
+     input.close();
+   }
+
+   return file;
+ }
 }
